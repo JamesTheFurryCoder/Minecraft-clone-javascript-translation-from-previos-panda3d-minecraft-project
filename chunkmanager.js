@@ -2,6 +2,42 @@ import { Chunk } from "./chunk.js";
 
 const coordinateKey = ([x, y, z]) => `${x},${y},${z}`;
 
+export function createBlockIDGrid(dimensions, data) {
+  if (
+    !Array.isArray(dimensions) ||
+    dimensions.length !== 3 ||
+    dimensions.some((size) => !Number.isInteger(size) || size <= 0)
+  ) {
+    throw new TypeError("Block ID grid dimensions must contain three positive integers");
+  }
+
+  const [sizeX, sizeY, sizeZ] = dimensions;
+  data ??= new Uint8Array(sizeX * sizeY * sizeZ);
+  if (!ArrayBuffer.isView(data) || data.length !== sizeX * sizeY * sizeZ) {
+    throw new TypeError("Block ID grid requires three positive dimensions and matching typed data");
+  }
+
+  const grid = Array.from({ length: sizeX }, (_, x) => new Proxy(new Array(sizeY), {
+    get(rows, property, receiver) {
+      if (typeof property !== "string") {
+        return Reflect.get(rows, property, receiver);
+      }
+      const y = Number(property);
+      if (Number.isInteger(y) && y >= 0 && y < sizeY && String(y) === property) {
+        const start = (x * sizeY + y) * sizeZ;
+        return data.subarray(start, start + sizeZ);
+      }
+      return Reflect.get(rows, property, receiver);
+    },
+  }));
+
+  Object.defineProperties(grid, {
+    dimensions: { value: dimensions },
+    flatData: { value: data },
+  });
+  return grid;
+}
+
 export class ChunkManager {
   constructor({
     scene,
@@ -27,14 +63,25 @@ export class ChunkManager {
     if (dimensions.length !== 3 || dimensions.some((size) => !Number.isInteger(size) || size <= 0)) {
       throw new TypeError("dimensions must contain three positive integers");
     }
-    if (!ArrayBuffer.isView(blockIDs) || blockIDs.length !== dimensions[0] * dimensions[1] * dimensions[2]) {
-      throw new TypeError("blockIDs must be a flat typed array matching dimensions");
+    const flatBlockIDs = ArrayBuffer.isView(blockIDs) ? blockIDs : blockIDs.flatData;
+    if (flatBlockIDs) {
+      if (flatBlockIDs.length !== dimensions[0] * dimensions[1] * dimensions[2]) {
+        throw new TypeError("blockIDs length must match dimensions");
+      }
+    } else if (
+      !Array.isArray(blockIDs) ||
+      blockIDs.length !== dimensions[0] ||
+      blockIDs[0]?.length !== dimensions[1] ||
+      blockIDs[0]?.[0]?.length !== dimensions[2]
+    ) {
+      throw new TypeError("blockIDs must be a 3D array or typed grid matching dimensions");
     }
 
     this.scene = scene;
     this.engine = engine;
     this.camera = camera;
     this.blockIDs = blockIDs;
+    this.flatBlockIDs = flatBlockIDs ?? null;
     this.dimensions = dimensions;
     this.material = material;
     this.chunkSize = chunkSize;
@@ -197,19 +244,20 @@ export class ChunkManager {
       Math.min(this.dimensions[axis], start + chunkSpan[axis] + 1)
     );
     const regionDimensions = sourceOrigin.map((start, axis) => sourceEnd[axis] - start);
-    const [worldYSize, worldZSize] = [this.dimensions[1], this.dimensions[2]];
     const [regionYSize, regionZSize] = [regionDimensions[1], regionDimensions[2]];
     const blocks = new Uint8Array(regionDimensions[0] * regionYSize * regionZSize);
 
     for (let x = sourceOrigin[0]; x < sourceEnd[0]; x += 1) {
       for (let y = sourceOrigin[1]; y < sourceEnd[1]; y += 1) {
-        const sourceIndex = x * worldYSize * worldZSize + y * worldZSize + sourceOrigin[2];
         const targetIndex = (x - sourceOrigin[0]) * regionYSize * regionZSize +
           (y - sourceOrigin[1]) * regionZSize;
-        blocks.set(
-          this.blockIDs.subarray(sourceIndex, sourceIndex + regionZSize),
-          targetIndex
-        );
+        const blockRow = this.flatBlockIDs
+          ? this.flatBlockIDs.subarray(
+            (x * this.dimensions[1] + y) * this.dimensions[2] + sourceOrigin[2],
+            (x * this.dimensions[1] + y) * this.dimensions[2] + sourceEnd[2]
+          )
+          : this.blockIDs[x][y].slice(sourceOrigin[2], sourceEnd[2]);
+        blocks.set(blockRow, targetIndex);
       }
     }
 

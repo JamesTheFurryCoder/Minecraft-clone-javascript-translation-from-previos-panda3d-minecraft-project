@@ -28,6 +28,31 @@ self.onmessage = ({ data }) => {
     uvs.push(0, 0, 1, 0, 1, 1, 0, 1);
   };
 
+  const addTopFace = (x, y, z) => addFace(
+    [[x, y, z + 1], [x + 1, y, z + 1], [x + 1, y + 1, z + 1], [x, y + 1, z + 1]],
+    [0, 0, 1]
+  );
+  const addBottomFace = (x, y, z) => addFace(
+    [[x, y, z], [x, y + 1, z], [x + 1, y + 1, z], [x + 1, y, z]],
+    [0, 0, -1]
+  );
+  const addFrontFace = (x, y, z) => addFace(
+    [[x, y, z], [x + 1, y, z], [x + 1, y, z + 1], [x, y, z + 1]],
+    [0, -1, 0]
+  );
+  const addBackFace = (x, y, z) => addFace(
+    [[x, y + 1, z], [x, y + 1, z + 1], [x + 1, y + 1, z + 1], [x + 1, y + 1, z]],
+    [0, 1, 0]
+  );
+  const addLeftFace = (x, y, z) => addFace(
+    [[x, y, z], [x, y, z + 1], [x, y + 1, z + 1], [x, y + 1, z]],
+    [-1, 0, 0]
+  );
+  const addRightFace = (x, y, z) => addFace(
+    [[x + 1, y, z], [x + 1, y + 1, z], [x + 1, y + 1, z + 1], [x + 1, y, z + 1]],
+    [1, 0, 0]
+  );
+
   const startX = Math.max(0, chunkX - sourceX);
   const startY = Math.max(0, chunkY - sourceY);
   const startZ = Math.max(0, chunkZ - sourceZ);
@@ -47,22 +72,22 @@ self.onmessage = ({ data }) => {
         const localZ = sourceZ + z - chunkZ;
 
         if (isAir(x - 1, y, z)) {
-          addFace([[localX, localY, localZ], [localX, localY, localZ + 1], [localX, localY + 1, localZ + 1], [localX, localY + 1, localZ]], [-1, 0, 0]);
+          addLeftFace(localX, localY, localZ);
         }
         if (isAir(x + 1, y, z)) {
-          addFace([[localX + 1, localY, localZ], [localX + 1, localY + 1, localZ], [localX + 1, localY + 1, localZ + 1], [localX + 1, localY, localZ + 1]], [1, 0, 0]);
+          addRightFace(localX, localY, localZ);
         }
         if (isAir(x, y - 1, z)) {
-          addFace([[localX, localY, localZ], [localX + 1, localY, localZ], [localX + 1, localY, localZ + 1], [localX, localY, localZ + 1]], [0, -1, 0]);
+          addFrontFace(localX, localY, localZ);
         }
         if (isAir(x, y + 1, z)) {
-          addFace([[localX, localY + 1, localZ], [localX, localY + 1, localZ + 1], [localX + 1, localY + 1, localZ + 1], [localX + 1, localY + 1, localZ]], [0, 1, 0]);
+          addBackFace(localX, localY, localZ);
         }
         if (isAir(x, y, z + 1)) {
-          addFace([[localX, localY, localZ + 1], [localX + 1, localY, localZ + 1], [localX + 1, localY + 1, localZ + 1], [localX, localY + 1, localZ + 1]], [0, 0, 1]);
+          addTopFace(localX, localY, localZ);
         }
         if (isAir(x, y, z - 1)) {
-          addFace([[localX, localY, localZ], [localX, localY + 1, localZ], [localX + 1, localY + 1, localZ], [localX + 1, localY, localZ]], [0, 0, -1]);
+          addBottomFace(localX, localY, localZ);
         }
       }
     }
