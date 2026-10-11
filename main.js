@@ -23,18 +23,8 @@ light.intensity = 1.1;
 // this is a 3D array representing the block IDs in the chunk. 0 represents air, and 1 represents a solid block.
 const sizeX = 1024;
 const sizeY = 1024;
-const sizeZ = 128;
+const sizeZ = 192;
 const blockIDs = createBlockIDGrid([sizeX, sizeY, sizeZ]);
-
-for (let x = 0; x < sizeX; x += 1) {
-  for (let y = 0; y < sizeY; y += 1) {
-    const height = 25 + Math.floor(
-      (Math.sin(x * 0.5) + Math.cos(y * 0.45) + 2) * 0.75
-    );
-
-    blockIDs[x][y].fill(1, 0, height);
-  }
-}
 
 // Uncomment to make every entry in blockIDs equal to 1:
 blockIDs.flatData.fill(1);
@@ -42,6 +32,7 @@ console.log(blockIDs[0][0][0]);
 blockIDs[0][0][127] = 0; // set the top block to air for testing purposes
 
 blockIDs[0][0][124] = 0; // set the top block to air for testing purposes
+blockIDs[1][1][122] = 0; // set the top block to air for testing purposes
 
 // end of the 3D array representing the block IDs in the chunk.
 
